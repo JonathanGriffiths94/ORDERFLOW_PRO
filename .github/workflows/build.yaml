@@ -1,0 +1,17 @@
+name: 🏗️ Build
+
+on: 
+  workflow_call:
+
+jobs:
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build project
+        run: echo "Building the project..."
+    

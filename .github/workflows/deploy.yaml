@@ -1,0 +1,16 @@
+name: 🚀 Deploy
+
+on: 
+  workflow_call:
+
+jobs:
+  build:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Echo some text
+        run: echo "Deploying the project..."
