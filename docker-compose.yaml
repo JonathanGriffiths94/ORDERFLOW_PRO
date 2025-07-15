@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  orderflow-pro:
+    build: .
+    container_name: orderflow-pro
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - orderflow-network
+
+  # Optional: Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: orderflow-redis
+    restart: unless-stopped
+    networks:
+      - orderflow-network
+
+networks:
+  orderflow-network:
+    driver: bridge
