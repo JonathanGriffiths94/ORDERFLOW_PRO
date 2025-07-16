@@ -2,13 +2,16 @@
 name = "orderflow-pro"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Jonathan Griffiths griffj147@gmail.com"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.11.9"
 ccxt = "^4.4.94"
 dotenv = "^0.9.9"
+pydantic-settings = "^2.10.1"
+pydantic = "^2.11.7"
+python-telegram-bot = "^22.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.9.6"
