@@ -204,15 +204,15 @@ class OrderBookImbalanceAnalyzer:
         # Imbalance strength factor (more extreme = higher confidence)
         imbalance_strength = abs(imbalance_ratio - Decimal("0.5"))
         strength_factor = min(imbalance_strength * 2, 1)  # Normalize to 0-1
-        confidence += strength_factor * Decimal("0.3")
+        confidence += Decimal(str(strength_factor)) * Decimal("0.3")
 
         # Volume factor (more volume = higher confidence)
         volume_factor = min(total_volume / (self.config.min_total_volume * 5), 1)
-        confidence += volume_factor * Decimal("0.15")
+        confidence += Decimal(str(volume_factor)) * Decimal("0.15")
 
         # Depth factor (deeper analysis = higher confidence)
         depth_factor = min(depth / 50, 1)  # Normalize to 0-1
-        confidence += depth_factor * Decimal("0.1")
+        confidence += Decimal(str(depth_factor)) * Decimal("0.1")
 
         # Consistency factor (check if imbalance is consistent across depths)
         consistency_factor = self._calculate_consistency_factor(snapshot)

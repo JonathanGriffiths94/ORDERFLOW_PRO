@@ -151,7 +151,12 @@ class BidAskWallAnalyzer:
             if cluster_value >= self.config.min_wall_value:
                 # Calculate cluster metrics
                 cluster_volume = sum(level.volume for level in cluster["levels"])
-                avg_price = sum(level.price * level.volume for level in cluster["levels"]) / cluster_volume
+
+                # Fix: Use Decimal for weighted average calculation
+                weighted_sum = Decimal("0")
+                for level in cluster["levels"]:
+                    weighted_sum += level.price * level.volume
+                avg_price = weighted_sum / cluster_volume
 
                 # Calculate significance
                 significance = self._calculate_significance(cluster_value)
@@ -292,11 +297,11 @@ class BidAskWallAnalyzer:
 
         # Size factor (larger walls = higher confidence)
         size_factor = min(level.notional_value / self.config.min_wall_value, 5) / 5
-        confidence += size_factor * Decimal("0.3")
+        confidence += Decimal(str(size_factor)) * Decimal("0.3")
 
         # Position factor (closer to best price = higher confidence)
         position_factor = max(0, 1 - (index / len(all_levels)))
-        confidence += position_factor * Decimal("0.2")
+        confidence += Decimal(str(position_factor)) * Decimal("0.2")
 
         # Relative size factor (compared to surrounding levels)
         if index > 0 and index < len(all_levels) - 1:
@@ -307,7 +312,7 @@ class BidAskWallAnalyzer:
             if avg_surrounding > 0:
                 relative_size = level.notional_value / avg_surrounding
                 relative_factor = min(relative_size / 3, 1)  # Cap at 3x
-                confidence += relative_factor * Decimal("0.1")
+                confidence += Decimal(str(relative_factor)) * Decimal("0.1")
 
         return min(confidence, Decimal("1.0"))
 
@@ -319,16 +324,16 @@ class BidAskWallAnalyzer:
         # Cluster size factor
         cluster_size = len(cluster["levels"])
         size_factor = min(cluster_size / 5, 1)  # Cap at 5 levels
-        confidence += size_factor * Decimal("0.2")
+        confidence += Decimal(str(size_factor)) * Decimal("0.2")
 
         # Density factor (how tight the cluster is)
         cluster_value = sum(level.notional_value for level in cluster["levels"])
         density_factor = min(cluster_value / (self.config.min_wall_value * 2), 1)
-        confidence += density_factor * Decimal("0.15")
+        confidence += Decimal(str(density_factor)) * Decimal("0.15")
 
         # Position factor
         position_factor = max(0, 1 - (cluster["start_index"] / len(all_levels)))
-        confidence += position_factor * Decimal("0.05")
+        confidence += Decimal(str(position_factor)) * Decimal("0.05")
 
         return min(confidence, Decimal("1.0"))
 

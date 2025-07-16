@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -23,10 +23,9 @@ class Settings(BaseSettings):
     # ==========================================
     # TRADING CONFIGURATION
     # ==========================================
-    trading_pairs: List[str] = Field(default=["BTC/USDT", "ETH/USDT"], description="Trading pairs to monitor")
-    exchanges: List[str] = Field(
-        default=["binance", "coinbase", "kraken", "okx", "bybit"], description="Exchanges to monitor"
-    )
+    # These are defined as strings in env and parsed to lists
+    trading_pairs: str = Field(default="BTC/USDT,ETH/USDT", description="Trading pairs to monitor")
+    exchanges: str = Field(default="binance,coinbase,kraken,okx,bybit", description="Exchanges to monitor")
 
     # ==========================================
     # ALERT THRESHOLDS
@@ -86,6 +85,12 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = Field(default=None, description="AWS secret key")
 
     # ==========================================
+    # INTERNAL PARSED FIELDS
+    # ==========================================
+    _trading_pairs_list: List[str] = []
+    _exchanges_list: List[str] = []
+
+    # ==========================================
     # VALIDATORS
     # ==========================================
     @field_validator("loglevel")
@@ -97,34 +102,45 @@ class Settings(BaseSettings):
             raise ValueError(f"loglevel must be one of {valid_levels}")
         return v.upper()
 
-    @field_validator("exchanges")
-    @classmethod
-    def validate_exchanges(cls, v):
-        """Validate exchange names."""
-        valid_exchanges = ["binance", "coinbase", "kraken", "okx", "bybit"]
-        for exchange in v:
-            if exchange.lower() not in valid_exchanges:
-                raise ValueError(f"Exchange {exchange} not supported. Valid: {valid_exchanges}")
-        return [e.lower() for e in v]
-
-    @field_validator("trading_pairs")
-    @classmethod
-    def validate_trading_pairs(cls, v):
-        """Validate trading pair format."""
-        for pair in v:
+    def model_post_init(self, __context: Any) -> None:
+        """Parse comma-separated fields after initialization."""
+        # Parse trading pairs
+        self._trading_pairs_list = [p.strip() for p in self.trading_pairs.split(",") if p.strip()]
+        # Validate trading pairs
+        for pair in self._trading_pairs_list:
             if "/" not in pair:
                 raise ValueError(f"Invalid trading pair format: {pair}. Use format: BTC/USDT")
-        return [p.upper() for p in v]
+        self._trading_pairs_list = [p.upper() for p in self._trading_pairs_list]
+
+        # Parse exchanges
+        self._exchanges_list = [e.strip().lower() for e in self.exchanges.split(",") if e.strip()]
+        # Validate exchanges
+        valid_exchanges = ["binance", "coinbase", "kraken", "okx", "bybit"]
+        for exchange in self._exchanges_list:
+            if exchange not in valid_exchanges:
+                raise ValueError(f"Exchange {exchange} not supported. Valid: {valid_exchanges}")
 
     # ==========================================
     # CONFIGURATION
     # ==========================================
-    class Config:
-        """Pydantic configuration."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # ==========================================
+    # PROPERTY ACCESSORS
+    # ==========================================
+    @property
+    def trading_pairs_list(self) -> List[str]:
+        """Get trading pairs as a list."""
+        return self._trading_pairs_list
+
+    @property
+    def exchanges_list(self) -> List[str]:
+        """Get exchanges as a list."""
+        return self._exchanges_list
 
     # ==========================================
     # HELPER METHODS

@@ -364,8 +364,8 @@ class AlertSystem:
     def _check_rate_limit(self) -> bool:
         """Check if we're within rate limits."""
 
-        # Get alerts sent in last minute
-        recent_alerts = self.alert_manager.get_recent_alerts(hours=0)  # Last hour
+        # Get alerts sent in last hour
+        recent_alerts = self.alert_manager.get_recent_alerts(hours=1)  # Changed from 0 to 1
 
         # Filter to last minute
         one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
@@ -420,16 +420,24 @@ class AlertSystem:
             return False
 
     # Alert management methods
-
     def get_alert_statistics(self) -> Dict[str, Any]:
         """Get alert system statistics."""
+
+        # Fix: Ensure we use valid hour values (1-24, not 0)
+        try:
+            recent_1h = len(self.alert_manager.get_recent_alerts(1))
+            recent_24h = len(self.alert_manager.get_recent_alerts(24))
+        except Exception as e:
+            logger.error(f"Error getting recent alerts: {e}")
+            recent_1h = 0
+            recent_24h = 0
 
         return {
             **self.stats,
             "queue_size": self.alert_queue.qsize(),
             "active_cooldowns": len(self.alert_manager.cooldowns),
-            "recent_alerts_1h": len(self.alert_manager.get_recent_alerts(1)),
-            "recent_alerts_24h": len(self.alert_manager.get_recent_alerts(24)),
+            "recent_alerts_1h": recent_1h,
+            "recent_alerts_24h": recent_24h,
             "system_running": self.running,
         }
 

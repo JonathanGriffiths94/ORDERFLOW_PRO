@@ -206,11 +206,11 @@ class VolumeSpikeAnalyzer:
 
         # Spike magnitude factor (larger spikes = higher confidence)
         magnitude_factor = min(spike_ratio / self.config.spike_threshold, 10) / 10
-        confidence += magnitude_factor * Decimal("0.3")
+        confidence += Decimal(str(magnitude_factor)) * Decimal("0.3")
 
         # Absolute volume factor (higher volume = higher confidence)
         volume_factor = min(current_volume / (self.config.min_volume_threshold * 10), 1)
-        confidence += volume_factor * Decimal("0.15")
+        confidence += Decimal(str(volume_factor)) * Decimal("0.15")
 
         # Consistency factor (how stable the average is)
         consistency_factor = self._calculate_average_consistency()

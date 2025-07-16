@@ -40,9 +40,9 @@ class ExchangeManager:
     def _initialize_exchanges(self):
         """Initialize exchange instances with ccxt."""
 
-        logger.info("Initializing exchanges", exchanges=settings.exchanges)
+        logger.info("Initializing exchanges", exchanges=settings.exchanges_list)
 
-        for exchange_name in settings.exchanges:
+        for exchange_name in settings.exchanges_list:
             try:
                 # Get exchange configuration
                 config = settings.get_exchange_config(exchange_name)
@@ -90,7 +90,7 @@ class ExchangeManager:
 
         # Start monitoring tasks for each exchange
         for exchange_name in self.exchanges:
-            for symbol in settings.trading_pairs:
+            for symbol in settings.trading_pairs_list:
                 task = asyncio.create_task(self._monitor_exchange_symbol(exchange_name, symbol))
                 self.tasks.append(task)
 
@@ -101,7 +101,7 @@ class ExchangeManager:
         logger.info(
             "Exchange manager started",
             exchanges=len(self.exchanges),
-            symbols=len(settings.trading_pairs),
+            symbols=len(settings.trading_pairs_list),
             tasks=len(self.tasks),
         )
 
@@ -196,14 +196,30 @@ class ExchangeManager:
     def _convert_order_book(self, exchange_name: str, symbol: str, raw_order_book: Dict) -> OrderBookSnapshot:
         """Convert ccxt order book to our format."""
 
-        # Convert bids
+        # Convert bids - ensure Decimal conversion
         bids = []
-        for price, volume in raw_order_book["bids"]:
+        for bid_data in raw_order_book["bids"]:
+            # Handle both list and dict formats
+            if isinstance(bid_data, (list, tuple)):
+                price, volume = bid_data[0], bid_data[1]
+            else:
+                price = bid_data.get("price", 0)
+                volume = bid_data.get("amount", bid_data.get("size", 0))
+
+            # Convert to Decimal to avoid float multiplication issues
             bids.append(OrderBookLevel(price=Decimal(str(price)), volume=Decimal(str(volume))))
 
-        # Convert asks
+        # Convert asks - ensure Decimal conversion
         asks = []
-        for price, volume in raw_order_book["asks"]:
+        for ask_data in raw_order_book["asks"]:
+            # Handle both list and dict formats
+            if isinstance(ask_data, (list, tuple)):
+                price, volume = ask_data[0], ask_data[1]
+            else:
+                price = ask_data.get("price", 0)
+                volume = ask_data.get("amount", ask_data.get("size", 0))
+
+            # Convert to Decimal to avoid float multiplication issues
             asks.append(OrderBookLevel(price=Decimal(str(price)), volume=Decimal(str(volume))))
 
         # Create snapshot

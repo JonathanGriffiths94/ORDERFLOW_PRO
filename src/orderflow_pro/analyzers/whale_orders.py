@@ -174,11 +174,11 @@ class WhaleOrderAnalyzer:
 
         # Size factor (larger orders = higher confidence)
         size_factor = min(level.notional_value / self.config.min_whale_value, 10) / 10
-        confidence += size_factor * Decimal("0.3")
+        confidence += Decimal(str(size_factor)) * Decimal("0.3")
 
         # Position factor (closer to market = higher confidence)
         position_factor = max(0, 1 - (index / len(all_levels)))
-        confidence += position_factor * Decimal("0.15")
+        confidence += Decimal(str(position_factor)) * Decimal("0.15")
 
         # Relative size factor (compared to surrounding levels)
         relative_factor = self._calculate_relative_size_factor(level, index, all_levels)

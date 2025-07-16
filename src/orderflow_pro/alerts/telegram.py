@@ -23,7 +23,6 @@ class TelegramConfig:
     chat_id: str = settings.telegram_chat_id
     max_retries: int = 3
     retry_delay: float = 1.0
-    message_timeout: float = 30.0
     enable_formatting: bool = True
     enable_status_updates: bool = True
 
@@ -240,12 +239,8 @@ class TelegramBot:
 
         for attempt in range(self.config.max_retries):
             try:
-                await self.bot.send_message(
-                    chat_id=self.config.chat_id,
-                    text=message,
-                    parse_mode=ParseMode.MARKDOWN_V2,
-                    timeout=self.config.message_timeout,
-                )
+                # First try with HTML formatting
+                await self.bot.send_message(chat_id=self.config.chat_id, text=message, parse_mode=ParseMode.HTML)
                 return True
 
             except RetryAfter as e:
@@ -266,12 +261,14 @@ class TelegramBot:
                 logger.error(f"Telegram API error: {e}")
 
                 # If it's a formatting error, try sending without formatting
-                if "can't parse" in str(e).lower():
+                if "can't parse" in str(e).lower() or "reserved" in str(e).lower():
                     try:
-                        await self.bot.send_message(
-                            chat_id=self.config.chat_id, text=message, timeout=self.config.message_timeout
+                        # Remove HTML tags and send as plain text
+                        plain_message = (
+                            message.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", "")
                         )
-                        logger.info("Message sent without formatting")
+                        await self.bot.send_message(chat_id=self.config.chat_id, text=plain_message)
+                        logger.info("Message sent as plain text")
                         return True
                     except Exception as e2:
                         logger.error(f"Failed to send message without formatting: {e2}")
@@ -289,7 +286,19 @@ class TelegramBot:
     async def _send_startup_message(self):
         """Send startup notification."""
 
-        message = "🚀 **OrderFlow Pro Started**\n\nMonitoring order books for trading opportunities..."
+        message = "🚀 <b>OrderFlow Pro Started</b>\n\nMonitoring order books for trading opportunities..."
+        await self._send_message_with_retry(message)
+
+    async def _send_shutdown_message(self):
+        """Send shutdown notification."""
+
+        if self.stats["uptime_start"]:
+            uptime = datetime.utcnow() - self.stats["uptime_start"]
+            message = (
+                f"🛑 <b>OrderFlow Pro Stopped</b>\n\nUptime: {uptime}\nMessages sent: {self.stats['messages_sent']}"
+            )
+        else:
+            message = "🛑 <b>OrderFlow Pro Stopped</b>"
         await self._send_message_with_retry(message)
 
     async def _send_shutdown_message(self):

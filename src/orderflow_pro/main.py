@@ -96,13 +96,11 @@ class OrderFlowProApp:
             # Log startup
             log_startup(
                 "OrderFlow Pro",
-                {
-                    "version": "1.0.0",
-                    "exchanges": settings.exchanges,
-                    "trading_pairs": settings.trading_pairs,
-                    "alert_cooldown": settings.alert_cooldown,
-                    "environment": settings.environment,
-                },
+                version="1.0.0",
+                exchanges=settings.exchanges_list,
+                trading_pairs=settings.trading_pairs_list,
+                alert_cooldown=settings.alert_cooldown,
+                environment=settings.environment,
             )
 
             # Start components in order
@@ -183,24 +181,49 @@ class OrderFlowProApp:
             # Update statistics
             self.stats.order_books_processed += 1
 
+            # Debug: Check snapshot data types
+            if snapshot.bids:
+                first_bid = snapshot.bids[0]
+                main_logger.debug(
+                    f"First bid types - price: {type(first_bid.price)}, volume: {type(first_bid.volume)}, notional: {type(first_bid.notional_value)}",
+                    exchange=snapshot.exchange,
+                    symbol=snapshot.symbol,
+                )
+
             # Run all analyzers
             all_patterns = []
 
             # Analyze bid/ask walls
-            wall_patterns = self.wall_analyzer.analyze_order_book(snapshot)
-            all_patterns.extend(wall_patterns)
+            try:
+                wall_patterns = self.wall_analyzer.analyze_order_book(snapshot)
+                all_patterns.extend(wall_patterns)
+            except Exception as e:
+                main_logger.error(f"Error in wall analyzer: {e}", exchange=snapshot.exchange, symbol=snapshot.symbol)
+                import traceback
+
+                main_logger.error(f"Wall analyzer traceback: {traceback.format_exc()}")
 
             # Analyze whale orders
-            whale_patterns = self.whale_analyzer.analyze_order_book(snapshot)
-            all_patterns.extend(whale_patterns)
+            try:
+                whale_patterns = self.whale_analyzer.analyze_order_book(snapshot)
+                all_patterns.extend(whale_patterns)
+            except Exception as e:
+                main_logger.error(f"Error in whale analyzer: {e}", exchange=snapshot.exchange, symbol=snapshot.symbol)
+                import traceback
+
+                main_logger.error(f"Whale analyzer traceback: {traceback.format_exc()}")
 
             # Analyze order book imbalances
-            imbalance_patterns = self.imbalance_analyzer.analyze_order_book(snapshot)
-            all_patterns.extend(imbalance_patterns)
+            try:
+                imbalance_patterns = self.imbalance_analyzer.analyze_order_book(snapshot)
+                all_patterns.extend(imbalance_patterns)
+            except Exception as e:
+                main_logger.error(
+                    f"Error in imbalance analyzer: {e}", exchange=snapshot.exchange, symbol=snapshot.symbol
+                )
+                import traceback
 
-            # Analyze volume (if available)
-            # Note: Volume analysis typically requires separate volume data
-            # This is a placeholder for integration with volume data
+                main_logger.error(f"Imbalance analyzer traceback: {traceback.format_exc()}")
 
             # Update pattern statistics
             self.stats.patterns_detected += len(all_patterns)
@@ -215,6 +238,9 @@ class OrderFlowProApp:
 
         except Exception as e:
             main_logger.error(f"Error processing order book: {e}", exchange=snapshot.exchange, symbol=snapshot.symbol)
+            import traceback
+
+            main_logger.error(f"Full traceback: {traceback.format_exc()}")
             self.stats.errors_encountered += 1
 
     async def _stats_update_loop(self):
@@ -291,7 +317,7 @@ class OrderFlowProApp:
         health_status["exchange_manager"] = {
             "healthy": len(connected_exchanges) > 0,
             "connected_exchanges": len(connected_exchanges),
-            "total_exchanges": len(settings.exchanges),
+            "total_exchanges": len(settings.exchanges_list),  # Use the property
             "details": exchange_manager.get_exchange_status(),
         }
 
@@ -333,9 +359,10 @@ class OrderFlowProApp:
         try:
             status_info = {
                 "exchanges": {
-                    exchange: exchange_manager.is_exchange_connected(exchange) for exchange in settings.exchanges
+                    exchange: exchange_manager.is_exchange_connected(exchange)
+                    for exchange in settings.exchanges_list  # Use the property
                 },
-                "trading_pairs": settings.trading_pairs,
+                "trading_pairs": settings.trading_pairs_list,  # Use the property
                 "start_time": self.stats.start_time.strftime("%H:%M:%S UTC"),
             }
 
@@ -455,8 +482,8 @@ class OrderFlowProApp:
                 "telegram_bot": telegram_bot.get_statistics(),
             },
             "configuration": {
-                "exchanges": settings.exchanges,
-                "trading_pairs": settings.trading_pairs,
+                "exchanges": settings.exchanges_list,  # Use the property
+                "trading_pairs": settings.trading_pairs_list,  # Use the property
                 "environment": settings.environment,
             },
         }

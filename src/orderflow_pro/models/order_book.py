@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class OrderSide(str, Enum):
@@ -20,10 +20,21 @@ class OrderBookLevel(BaseModel):
     volume: Decimal = Field(..., description="Volume at this price level")
     count: Optional[int] = Field(default=None, description="Number of orders (if available)")
 
+    @field_validator("price", "volume", mode="before")
+    @classmethod
+    def convert_to_decimal(cls, v):
+        """Ensure all numeric fields are Decimal."""
+        if v is None:
+            return Decimal("0")
+        if isinstance(v, Decimal):
+            return v
+        return Decimal(str(v))
+
     @computed_field
     @property
     def notional_value(self) -> Decimal:
         """Calculate notional value (price * volume)."""
+        # Both should already be Decimal from the validator
         return self.price * self.volume
 
     def __str__(self) -> str:
